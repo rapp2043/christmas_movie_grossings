@@ -1,0 +1,289 @@
+---
+title: "Christmas Movie Grossings"
+author: "Anthony Clemons"
+date: "2024-01-09"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r}
+#Install and load the necessary packages
+library(tidyverse)
+library(ggplot2)
+library(wordcloud)
+library(knitr)
+
+```
+
+# Conduct Exploratory Data Analysis of the df1_primary (Primary Chrstmas List)
+
+```{r}
+# Read in the data
+df1_primary = read.csv("Primary Christmas List.csv", header = TRUE)
+```
+
+
+## Remove the M and $ from the values in the gross column
+```{r}
+#Clean the data
+df1_primary$gross = as.character(gsub("M", "", df1_primary$gross))
+df1_primary$gross = as.character(gsub("\\$", "", df1_primary$gross))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#transform release year, runtime, and imdb rating to numeric
+
+df1_primary$release_year = as.numeric(df1_primary$release_year)
+df1_primary$runtime = as.numeric(df1_primary$runtime)
+df1_primary$imdb_rating = as.numeric(df1_primary$imdb_rating)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#change the gross column to numeric
+df1_primary$gross = as.numeric(df1_primary$gross)
+```
+
+
+```{r}
+summary(df1_primary)
+```
+
+# Calculating the mode of the year column
+
+```{r}
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+Mode(df1_primary$release_year)
+```
+
+## determining the top five number of years for how many releases
+
+```{r}
+df1_primary %>% 
+  group_by(release_year) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  head(5)
+```
+## Determining the top five number of genres for how many releases
+
+```{r}
+#determining the top five number of genres for how many releases
+
+df1_primary %>% 
+  group_by(genre) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  head(5)
+```
+## Determine the top five number of directors for how many releases
+
+```{r}
+#determining the top five number of directors for how many releases
+
+df1_primary %>% 
+  group_by(director) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  head(5)
+
+```
+## Create a list of the genres and the number of times they appear in the dataset
+
+```{r}
+
+genre_list = df1_primary %>% 
+  group_by(genre) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  head(200)
+
+print(genre_list)
+
+```
+
+# Generate Visualizations of the df1_primary (Primary Christmas List)
+
+## Create a word cloud based on the genre_list
+
+```{r warning=FALSE}
+wordcloud(words = genre_list$genre, freq = genre_list$n, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+```
+
+## The top 10 genres
+
+```{r}
+
+genre_list %>% 
+  arrange(desc(n)) %>% 
+  head(10) %>% 
+  ggplot(aes(x = genre, y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Top 10 Genres", x = "Genre", y = "Number of Movies")
+```
+## The top 10 directors
+
+```{r}
+
+#create a list of the directors and the number of times they appear in the dataset
+
+director_list = df1_primary %>% 
+  group_by(director) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  head(10)
+
+```
+
+```{r}
+ggplot(director_list, aes(x = reorder(director, n), y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Top 10 Directors", x = "Director", y = "Number of Movies")
+
+```
+## List of the top 10 directors and the runtime of their movies
+
+```{r}
+director_runtime = df1_primary %>% 
+  group_by(director) %>% 
+  summarise(runtime = mean(runtime)) %>% 
+  arrange(desc(runtime)) %>% 
+  head(10)
+
+```
+
+## Scatterplot of the relationship between the runtime and the top 10 directors
+
+```{r}
+
+ggplot(director_runtime, aes(x = reorder(director, runtime), y = runtime)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Top 10 Directors and the Runtime of Their Movies", x = "Director", y = "Runtime")
+
+```
+## What does the scatterplot of the relationship between the runtime and the top 10 directors tell us?
+
+The scatterplot of the relationship between the runtime and the top 10 directors tells us that the movies with the longest runtime were directed by Megan Follows. The movies with the shortest runtime were directed by Malcolm Lee.
+
+
+## Table of the frequency distribution of the movie ratings
+
+```{r}
+
+rating_list = df1_primary %>% 
+  group_by(rating) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n))
+
+#Mutate the rating_list to keep only the ratings of G, PG, R, NC-17, and PG-13 and to classify everything as other
+
+rating_list = rating_list %>% 
+  mutate(rating = ifelse(rating == "G", "G", ifelse(rating == "PG", "PG", ifelse(rating == "R", "R", ifelse(rating == "NC-17", "NC-17", ifelse(rating == "PG-13", "PG-13", "Other"))))))
+
+```
+
+
+## Bar chart of the movie ratings
+
+```{r}
+
+ggplot(rating_list, aes(x = rating, y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Movie Ratings", x = "Rating", y = "Number of Movies")
+
+```
+
+## Table of the frequency distribution of the movie imdb ratings versus runtime
+
+```{r}
+# Generate  a table/runtime table remove na
+
+imdb_runtime = df1_primary %>% 
+  group_by(imdb_rating) %>% 
+  summarise(runtime = mean(runtime)) %>% 
+  arrange(desc(runtime)) %>% 
+  na.omit()
+
+
+# Generate a scatterplot of the imdb ratings versus runtime with trendline
+
+ggplot(imdb_runtime, aes(x = imdb_rating, y = runtime)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "IMDB Ratings vs. Runtime", x = "IMDB Rating", y = "Runtime") +
+  theme_dark() +
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+
+### What does the scatterplot of the imdb ratings versus runtime tell us?
+
+The scatterplot of the imdb ratings versus runtime tells us that the movies with the highest IMDB ratings have a runtime of 120 minutes.  The movies with the lowest IMDB ratings have a runtime of 90 minutes.
+
+## Frequency distribution of IMDB ratings by decade
+
+```{r}
+
+# Table of the frequency distribution of IMDB ratings by decade
+
+imdb_decade = df1_primary %>% 
+  group_by(release_year) %>% 
+  summarise(imdb_rating = mean(imdb_rating)) %>% 
+  arrange(desc(imdb_rating)) %>% 
+  na.omit()
+
+# Chart of the frequency distribution of IMDB ratings by decade
+
+ggplot(imdb_decade, aes(x = release_year, y = imdb_rating)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "IMDB Ratings by Decade", x = "Release Year", y = "IMDB Rating") +
+  theme_dark() +
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+### What does the chart that lumps the IMDB ratings by decade tell us?
+
+The chart that lumps the IMDB ratings by decade tells us that the movies with the highest IMDB ratings were released in the 1930s.  The movies with the lowest IMDB ratings were released in the 2010s.
+
+# trends in the release of christmas movies over time
+
+```{r}
+
+# Table of the frequency distribution of the release of christmas movies over time
+
+release_decade = df1_primary %>% 
+  group_by(release_year) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  na.omit()
+
+# Chart of the frequency distribution of the release of christmas movies over time with trendline and every five years
+
+ggplot(release_decade, aes(x = release_year, y = n)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Release of Christmas Movies Over Time", x = "Release Decade", y = "Number of Movies") +
+  theme_dark() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_x_continuous(breaks = seq(1930, 2010, 10))
+
+```
+## What does the chart of the release of Christmas movies over time tell us?
+
+The chart of the release of Christmas movies over time tells us that the number of Christmas movies released has increased over time.  The number of Christmas movies released has increased the most in the 2010s.
